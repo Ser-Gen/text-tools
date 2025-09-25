@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Инструменты работы с текстом</title>
+	<style>
+			body {
+				background-color: #333;
+				color: #fff;
+				font-size: 18px;
+				font-family: monospace;
+			}
+			a {
+				color: #acf;
+			}
+			.Box {
+				display: inline-block;
+				width: 100%;
+			}
+			.Box__header {
+				font-size: inherit;
+				margin-bottom: 0;
+			}
+			.Box__list {
+				margin-top: 0;
+				padding-left: 20px;
+			}
+	</style>
+</head>
+<body>
+
+<div class="Group">
+	<div class="Box">
+		<ul class="Box__list">
+			<li class="Box__item">
+				<a href="pasta">Обмен текстом</a>
+			</li>
+			<li class="Box__item">
+				<a href="diff">Сравнение текстов</a>
+			</li>
+			<li class="Box__item">
+				<a href="sandbox">Песочница</a>
+			</li>
+			<li class="Box__item">
+				<a href="data:text/html,<html contenteditable>">Контентедитабле</a> ← копируйте в буфер, по клику открыть нельзя
+			</li>
+		</ul>
+	</div>
+	<div class="Box">
+		<h2 class="Box__header">Не наши</h2>
+		<ul class="Box__list">
+			<li class="Box__item">
+				<a href="https://vscode.dev/">Вскод в браузере</a>
+			</li>
+			<li class="Box__item">
+				<a href="https://typograf.github.io/">Типограф</a>
+			</li>
+			<li class="Box__item">
+				<a href="https://pandoc.org/try/">Конвертер разметки</a>
+			</li>
+		</ul>
+	</div>
+</div>
+
+</body>
+</html>

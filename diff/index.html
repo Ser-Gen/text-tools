@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>diff</title>
+	<style>
+		html,
+		body,
+		#container {
+			background-color: #333;
+			height: 100%;
+			overflow: hidden;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+		body {
+			margin: 0;
+		}
+		#container {
+			height: calc(100% - 22px);
+		}
+		#panel {
+			background-color: rgb(0, 122, 204);
+			color: #fff;
+			height: 22px;
+			padding-left: 10px;
+			padding-right: 10px;
+		}
+		#panel a {
+			color: #fff;
+			text-decoration: none;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			margin-right: 1em;
+		}
+		#panel #right {
+			float: right;
+		}
+	</style>
+	<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+	<div id="container"></div>
+	<div id="panel">
+		<a href="../">&larr; В список</a>
+		<div id="right">
+			<select id="modesPicker">
+				<option value="plaintext" selected>plaintext</option>
+			</select>
+			<button id="prev">&uarr;</button>
+			<button id="next">&darr;</button>
+			<label>
+				<input type="checkbox" id="countTrimWhitespace" checked>
+				Учитывать пустоту
+			</label>
+		</div>
+	</div>
+
+<script src="../lib/browserDetector.js"></script>
+<script src="../lib/textFileInput.js"></script>
+<script src="../lib/fflate.js"></script>
+<script src="../lib/saveload.js"></script>
+<script src="../lib/beautify/dist/main.js"></script>
+<script src="../editor/min/vs/loader.js"></script>
+<script>
+
+// включаем редакторы
+require.config({
+	paths: {
+		'vs': '../editor/min/vs',
+	},
+});
+require([
+	'vs/editor/editor.main'
+], onEditor);
+
+function onEditor () {
+	setModesOptions();
+
+	const source = monaco.editor.createModel(
+		"Превет1",
+		"text/plain",
+	);
+	const result = monaco.editor.createModel(
+		"Привет!",
+		"text/plain",
+	);
+	
+	const diffEditor = monaco.editor.createDiffEditor(container, {
+		theme: 'vs-dark',
+		wordWrap: 'on',
+		automaticLayout: 'true',
+		renderWhitespace: true,
+		insertSpaces: false,
+		tabSize: 4,
+		
+		ignoreTrimWhitespace: false,
+		originalEditable: true,
+		readOnly: false,
+	});
+	const navi = monaco.editor.createDiffNavigator(diffEditor, {
+		followsCaret: true, // resets the navigator state when the user selects something in the editor
+		ignoreCharChanges: true // jump from line to line
+	});
+
+	diffEditor.setModel({
+		original: source,
+		modified: result,
+	});
+
+	prev.onclick = function () {
+		navi.previous();
+	}
+	next.onclick = function () {
+		navi.next();
+	}
+
+	countTrimWhitespace.onchange = function () {
+		diffEditor.updateOptions({
+			ignoreTrimWhitespace: !this.checked
+		});
+	}
+
+	document.onkeyup = function (e) {
+		if (e.ctrlKey) {
+			if (e.keyCode === 38) {
+				navi.previous();
+			}
+			else if (e.keyCode === 40) {
+				navi.next();
+			}
+		}
+	}
+
+	const onUpdateDebounced = debounce(onUpdate);
+
+	load()
+		.then(data => {
+			if (data?.texts?.length === 2) {
+				source.setValue(data.texts[0]);
+				result.setValue(data.texts[1]);
+			}
+
+			if (data?.mode) {
+				monaco.editor.setModelLanguage(source, data.mode);
+				monaco.editor.setModelLanguage(result, data.mode);
+				modesPicker.value = data.mode;
+			}
+		}, onLoadFail)
+		.catch(onLoadFail)
+
+	source.onDidChangeContent(onUpdateDebounced);
+	result.onDidChangeContent(onUpdateDebounced);
+
+	// https://github.com/microsoft/monaco-editor/issues/385
+	applyFormatAction(diffEditor.getOriginalEditor());
+	applyFormatAction(diffEditor.getModifiedEditor());
+
+	modesPicker.onchange = function (e) {
+		monaco.editor.setModelLanguage(source, this.value);
+		monaco.editor.setModelLanguage(result, this.value);
+		onUpdateDebounced();
+	}
+
+	var fileInputWrapper = document.createElement('div');
+
+	fileInputWrapper.hidden = true;
+	document.body.appendChild(fileInputWrapper);
+
+	var textFileInput1 = new TextFileInput(fileInputWrapper, {
+		onFiles: function (files) {
+			onFiles(files, source);
+		}
+	});
+	var textFileInput2 = new TextFileInput(fileInputWrapper, {
+		onFiles: function (files) {
+			onFiles(files, result);
+		}
+	});
+
+	function applyFormatAction (editor) {
+		editor.addAction({
+			id: 'format-html-css-js',
+			label: 'Format HTML CSS JS',
+			run: function (ed) {
+				const editorValue = editor.getModel().getValue();
+				const beautifyOptions ={
+					'indent-with-tabs': true,
+					'wrap-attributes': 'force-aligned',
+				};
+
+				switch (modesPicker.value) {
+					case 'html':
+						beautifyHTML(editorValue.trim()).then(r=>{
+							editor.getModel().setValue(r);
+						})
+						break;
+					case 'javascript':
+						editor.getModel().setValue(beautifyJS(editorValue.trim(), beautifyOptions));
+						break;
+					case 'css':
+						editor.getModel().setValue(beautifyCSS(editorValue.trim(), beautifyOptions));
+						break;
+				}
+			}
+		});
+	}
+
+	function onFiles (files, target) {
+		var a = files[0];
+		var reader = new FileReader();
+
+		reader.onload = function() {
+			var language = findLanguageByFile(a);
+
+			if (language) {
+				monaco.editor.setModelLanguage(source, language.id);
+				monaco.editor.setModelLanguage(result, language.id);
+				modesPicker.value = language.id;
+			}
+
+			target.setValue(reader.result);
+		};
+		reader.readAsText(a);
+	}
+
+	function findLanguageByFile (file) {
+		var result = '';
+		var languages = monaco.languages.getLanguages();
+		var extension = '.'+ file.name.split('.').pop();
+
+		for (var i = 0; i < languages.length; i++) {
+			if (
+				languages[i].extensions?.indexOf(extension) > -1
+			) {
+				return languages[i];
+			}
+		}
+
+		return result;
+	}
+
+	function onUpdate () {
+		const sourceValue = source.getValue();
+		const resultValue = result.getValue();
+
+		save({
+			type: 'diff',
+			texts: [
+				sourceValue,
+				resultValue,
+			],
+			mode: modesPicker.value,
+		});
+	}
+
+	function onLoadFail (e) {
+		location.hash = '';
+	}
+
+	function setModesOptions () {
+		var MODES = (function() {
+			var modesIds = monaco.languages.getLanguages().map(function(lang) {
+				return lang.id;
+			});
+
+			modesIds.sort();
+
+			return modesIds.map(function(modeId) {
+				return {
+					modeId: modeId,
+				};
+			});
+		})();
+
+		for (var i = 0; i < MODES.length; i++) {
+			var o = document.createElement('option');
+
+			o.textContent = MODES[i].modeId;
+			modesPicker.appendChild(o);
+		}
+	}
+}
+</script>
+</body>
+</html>

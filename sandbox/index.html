@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Sandbox</title>
+	<style>
+html,
+body {
+	height: 100%;
+	margin: 0;
+}
+body {
+	background-color: #171717;
+	display: grid;
+	grid-template-columns: 25% 25% 25% 25%;
+	grid-template-rows: calc(100% - 22px) 22px;
+	grid-template-areas:
+		"html css js view"
+		"panel panel panel panel";
+	overflow: hidden;
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+body.fullscreen {
+	grid-template-columns: 100%;
+	grid-template-areas:
+		"view"
+		"panel";
+}
+textarea {
+	resize: none;
+}
+#html {
+	grid-area: html;
+}
+#css {
+	grid-area: css;
+}
+#js {
+	grid-area: js;
+}
+#view {
+	grid-area: view;
+	background-color: #fafafa;
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+	border-width: 0;
+}
+#panel {
+	grid-area: panel;
+	background-color: rgb(0, 122, 204);
+	color: #fff;
+	padding-left: 10px;
+	padding-right: 10px;
+}
+#panel a {
+	color: #fff;
+	text-decoration: none;
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+#panel #right {
+	float: right;
+}
+
+button {
+	cursor: pointer;
+	vertical-align: middle;
+	height: 100%;
+}
+	</style>
+	<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+
+<body>
+
+<div id="html"></div>
+<div id="css"></div>
+<div id="js"></div>
+<iframe id="view" src=""></iframe>
+<div id="panel">
+	<a href="../">&larr; В список</a>
+	<div id="right">
+		<label>
+			<input type="checkbox" id="fullscreen">
+			Результат на весь экран
+		</label>
+	</div>
+</div>
+
+<script src="../lib/browserDetector.js"></script>
+<script src="../lib/fflate.js"></script>
+<script src="../lib/saveload.js"></script>
+<script src="../lib/beautify/dist/main.js"></script>
+<script src="../editor/min/vs/loader.js"></script>
+<script src="../lib/emmet-monaco.js"></script>
+<script>
+// настройки по умолчанию
+var defaults = {
+	value: {
+		html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Document</title>
+	#CSS#
+</head>
+<body>
+
+
+
+#JS#
+</body>
+</html>
+`,
+		css: `body {
+	margin: 0;
+}
+`,
+		js: `console.log('kek');
+`
+	}
+};
+var data = defaults;
+
+var html;
+var css;
+var js;
+
+load()
+	.then(loadedData => {
+		if (loadedData?.texts?.length === 1) {
+			var contents = JSON.parse(loadedData.texts[0]);
+			
+			data.value.html = contents.value.html;
+			data.value.css = contents.value.css;
+			data.value.js = contents.value.js;
+		}
+
+		init();
+	}, onLoadFail)
+	.catch(onLoadFail)
+
+function onLoadFail (e) {
+	location.hash = '';
+	init();
+}
+
+
+function init () {
+	
+	// включаем редакторы
+	require.config({
+		paths: {
+			'vs': '../editor/min/vs',
+		},
+	});
+	require([
+		'vs/editor/editor.main',
+	], onEditor);
+}
+
+function onEditor () {
+	emmetMonaco.emmetHTML(monaco);
+	
+	html = monaco.editor.create(document.getElementById('html'), editorSettings(data.value.html, 'html'));
+
+	css = monaco.editor.create(document.getElementById('css'), editorSettings(data.value.css, 'css'));
+
+	js = monaco.editor.create(document.getElementById('js'), editorSettings(data.value.js, 'javascript'));
+
+	var updateDebounced = debounce(update);
+
+	updateDebounced();
+
+	html.onKeyUp(updateDebounced);
+	css.onKeyUp(updateDebounced);
+	js.onKeyUp(updateDebounced);
+
+	html.addAction({
+		id: 'format-html',
+		label: 'Format HTML',
+		run: function (ed) {
+			const editorValue = html.getValue();
+
+			beautifyHTML(editorValue.trim()).then(r=>{
+				html.setValue(r);
+			})
+		}
+	});
+	js.addAction({
+		id: 'format-js',
+		label: 'Format JS',
+		run: function (ed) {
+			const editorValue = js.getValue();
+			const beautifyOptions ={
+				'indent-with-tabs': true,
+				'wrap-attributes': 'force-aligned',
+			};
+
+			js.setValue(beautifyJS(editorValue.trim(), beautifyOptions));
+		}
+	});
+	css.addAction({
+		id: 'format-css',
+		label: 'Format CSS',
+		run: function (ed) {
+			const editorValue = css.getValue();
+			const beautifyOptions ={
+				'indent-with-tabs': true,
+				'wrap-attributes': 'force-aligned',
+			};
+
+			css.setValue(beautifyCSS(editorValue.trim(), beautifyOptions));
+		}
+	});
+
+	fullscreen.onchange = function () {
+		document.body.classList.toggle('fullscreen', this.checked);
+	}
+
+	function update () {
+		var htmlValue = html.getValue();
+		var cssValue = css.getValue();
+		var jsValue = js.getValue();
+
+		var cssText = new Blob([css.getValue()], {
+			type: 'text/css'
+		});
+		var jsText = new Blob([js.getValue()], {
+			type: 'application/javascript'
+		});
+		var cssUrl = URL.createObjectURL(cssText);
+		var jsUrl = URL.createObjectURL(jsText);
+		
+		var htmlText = new Blob([html.getValue().replace('#CSS#', '<link rel="stylesheet" href="'+ cssUrl +'">').replace('#JS#', '<script src="'+ jsUrl +'"><\/script>')], {
+			type: 'text/html'
+		});
+		var htmlUrl = URL.createObjectURL(htmlText);
+
+		var value = JSON.stringify({
+			value: {
+				html: htmlValue,
+				css: cssValue,
+				js: jsValue
+			}
+		});
+
+		view.src = htmlUrl;
+
+		view.onload = function () {
+			updateTitle(this);
+			URL.revokeObjectURL(htmlUrl);
+			URL.revokeObjectURL(cssUrl);
+			URL.revokeObjectURL(jsUrl);
+		};
+
+		save({
+			type: 'sandbox',
+			texts: [
+				value,
+			],
+		});
+	};
+
+	function reset () {
+		html.setValue(defaults.value.html);
+		css.setValue(defaults.value.css);
+		js.setValue(defaults.value.js);
+		updateDebounced();
+	};
+
+	function updateTitle (view) {
+		var title = view?.contentWindow?.document?.title.trim();
+
+		if (title) {
+			document.title = title +' — Sandbox';
+		}
+		else {
+			document.title = 'Sandbox';
+		}
+	}
+}
+
+function editorSettings (value, language) {
+	return {
+		language: language,
+		theme: 'vs-dark',
+		wordWrap: 'on',
+		automaticLayout: true,
+		renderWhitespace: true,
+		insertSpaces: false,
+		tabSize: 4,
+
+		value: value,
+	};
+};
+
+// уменьшение количества вызовов
+function debounce (func, wait, immediate) {
+	var timeout;
+
+	return function() {
+		var context = this, args = arguments;
+		var later = function() {
+			timeout = null;
+			if (!immediate) func.apply(context, args);
+		};
+		var callNow = immediate && !timeout;
+		
+		clearTimeout(timeout);
+		timeout = setTimeout(later, wait || 500);
+		if (callNow) func.apply(context, args);
+	};
+};
+</script>
+
+</body>
+
+</html>

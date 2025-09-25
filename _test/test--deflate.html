@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>test--deflate</title>
+	<style>
+		body {
+			background-color: #333;
+			color: #fff;
+			font-family: Consolas, 'Courier New', Courier, monospace;
+		}
+	</style>
+</head>
+<body>
+<div id="result"></div>
+<script src="../lib/fflate.js"></script>
+<script src="../lib/pako.js"></script>
+<script>
+fetch('test--deflate-data.txt')
+	.then(r => r.text())
+	.then(text => {
+
+		// сжимаем
+
+		var s = performance.now();
+		var buf = fflate.strToU8(text);
+		var compressedFflate = fflate.compressSync(buf, {
+			level: 6, mem: 8
+		});
+		result.insertAdjacentHTML('beforeend', '<div>fflate encode: '+ (performance.now() - s) +' ms</div>');
+
+		var s = performance.now();
+		var compressedPako = pako.deflate(text);
+		result.insertAdjacentHTML('beforeend', '<div>pako encode: '+ (performance.now() - s) +' ms</div>');
+
+		// смотрим результат
+
+		result.insertAdjacentHTML('beforeend', '<div>source size: '+ buf.byteLength +'</div>');
+		result.insertAdjacentHTML('beforeend', '<div>fflate size: '+ compressedFflate.buffer.byteLength +'</div>');
+		result.insertAdjacentHTML('beforeend', '<div>pako size: '+ compressedPako.buffer.byteLength +'</div>');
+
+		// разжимаем
+
+		var s = performance.now();
+		var decompressedFflate = fflate.decompressSync(compressedFflate);
+		var decompressedFflateText = fflate.strFromU8(decompressedFflate);
+		result.insertAdjacentHTML('beforeend', '<div>fflate decode: '+ (performance.now() - s) +' ms</div>');
+
+		var s = performance.now();
+		var unCompressedPakoText = pako.inflate(compressedPako, {
+			to: 'string',
+		});
+		result.insertAdjacentHTML('beforeend', '<div>pako decode: '+ (performance.now() - s) +' ms</div>');
+
+		result.insertAdjacentHTML('beforeend', '<div>fflate is equal: '+ (text === decompressedFflateText) +'</div>');
+		result.insertAdjacentHTML('beforeend', '<div>pako is equal: '+ (text === decompressedFflateText) +'</div>');
+	})
+</script>
+</body>
+</html>

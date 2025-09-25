@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>tree-shaking</title>
+	<style>
+	body {
+		background-color: #333;
+		color: #fff;
+	}
+	</style>
+</head>
+<body>
+	<textarea name="" id="k" cols="30" rows="10"></textarea>
+	<button id="s">s</button>
+
+	<script src="dist/main.js"></script>
+	<!-- <script src="dist/beautify-css.min.js"></script> -->
+	<script>
+		s.onclick = function () {
+			beautifyHTML(`${k.value}`).then(r=>{
+				document.body.innerHTML +='<pre>'+r.replace(/>/g, '&gt;').replace(/</g, '&lt;')
+			});
+
+			// document.body.innerHTML +='<pre>'+beautifyJS(k.value.trim(), {
+			// 	'indent-with-tabs': true,
+			// })+'</pre>';
+
+			// document.body.innerHTML +='<pre>'+beautifyCSS(k.value.trim(), {
+			// 	'indent-with-tabs': true,
+			// })+'</pre>';
+		}
+	</script>
+</body>
+</html>
+
+
+<!--
+<div class="std Aysk6e card-section">Совет. По этому запросу вы можете <a href="/search?q=parcel+1&amp;client=ubuntu&amp;hs=iOn&amp;lr=lang_ru&amp;sa=X&amp;ved=2ahUKEwiN_LT6wsT6AhUPlIsKHWDxCscQuAF6BAgDEAE">найти сайты <em>на русском языке</em></a>. Указать предпочтительные языки для результатов поиска можно в разделе <a href="/preferences?hl=ru#languages" ping="/url?sa=t&amp;source=web&amp;rct=j&amp;url=/preferences%3Fhl%3Dru%23languages&amp;ved=2ahUKEwiN_LT6wsT6AhUPlIsKHWDxCscQtwF6BAgDEAI">Настройки</a>.</div>
+-->
+
+
+<!--
+	import posthtml from 'posthtml';import beautify from 'posthtml-beautify';
+export function formatHTML (html) {
+	return posthtml().use(beautify({
+			rules: {indent: '\\t',
+				sortAttr: true,}
+		}))
+		.process(html).then(result => {
+			return result.html;
+		});
+}window.beautifyHTML = formatHTML;
+-->
+
+
+<!--
+	body.fullscreen {
+	grid-template-columns: 100%;
+	grid-template-areas:
+		"view"
+		"panel";
+}
+textarea {
+	resize: none;
+}
+#html {	grid-area: html;}#css {	grid-area: css;
+}
+#js {	grid-area: js;
+}
+#view {
+	grid-area: view;
+	background-color: #fafafa;	box-sizing: border-box;
+	width:100%;height: 100%;
+	border-width: 0;}
+-->

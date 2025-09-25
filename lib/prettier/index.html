@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>prettier</title>
+	<style>
+	body {
+		background-color: #333;
+		color: #fff;
+	}
+	</style>
+</head>
+</head>
+<body>
+
+<h1>он чуть быстрее, но грузить целый МБ ради этого не хочется</h1>
+
+  <textarea name="" id="textInput" cols="30" rows="10"></textarea>
+  <button id="formatButton">format</button>
+  <script src="https://unpkg.com/prettier@2.7.1/standalone.js"></script>
+  <script src="https://unpkg.com/prettier@2.7.1/parser-html.js"></script>
+  <script src="https://unpkg.com/prettier@2.7.1/parser-postcss.js"></script>
+  <script src="https://unpkg.com/prettier@2.7.1/parser-babel.js"></script>
+<script type="text/javascript">
+formatButton.addEventListener("click", function() {
+			console.time('b');
+  var value = textInput.value;
+  document.body.innerHTML +='<pre>'+prettier.format(value, {
+    // parser: "html",
+    // parser: "css",
+    plugins: prettierPlugins,
+    useTabs: true,
+  }).replace(/>/g, '&gt;').replace(/</g, '&lt;');
+				console.timeEnd('b');
+});</script>
+</body>
+</html>

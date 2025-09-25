@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Pasta</title>
+	<style>
+		html,
+		body,
+		#container {
+			height: 100%;
+			overflow: hidden;
+		}
+		body {
+			margin: 0;
+		}
+		#container {
+			height: calc(100% - 22px);
+		}
+		#panel {
+			background-color: rgb(0, 122, 204);
+			color: #fff;
+			height: 22px;
+			padding-left: 10px;
+			padding-right: 10px;
+		}
+		#panel a {
+			color: #fff;
+			text-decoration: none;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			margin-right: 1em;
+		}
+		#panel #right {
+			float: right;
+		}
+	</style>
+	<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+	<div id="container"></div>
+	<div id="panel">
+		<a href="../">&larr; В список</a>
+		<div id="right">
+			<select id="modesPicker">
+				<option value="plaintext" selected>plaintext</option>
+			</select>
+		</div>
+	</div>
+
+<script src="../lib/browserDetector.js"></script>
+<script src="../lib/textFileInput.js"></script>
+<script src="../lib/fflate.js"></script>
+<script src="../lib/saveload.js"></script>
+<script src="../lib/beautify/dist/main.js"></script>
+<script src="../editor/min/vs/loader.js"></script>
+<script>
+require.config({
+	paths: {
+		'vs': '../editor/min/vs',
+	},
+});
+require([
+	'vs/editor/editor.main'
+], onEditor);
+
+function onEditor () {
+	setModesOptions();
+	
+	var editor = monaco.editor.create(
+		document.getElementById("container"), {
+			language: "plaintext",
+			theme: "vs-dark",
+			wordWrap: 'on',
+			automaticLayout: true,
+			renderWhitespace: true,
+			insertSpaces: false,
+			tabSize: 4,
+
+			value: "Привет!",
+		}
+	);
+
+	const onUpdateDebounced = debounce(onUpdate);
+
+	load()
+		.then(data => {
+			if (data?.texts?.length === 1) {
+				editor.getModel().setValue(data.texts[0]);
+			}
+
+			if (data?.mode) {
+				monaco.editor.setModelLanguage(editor.getModel(), data.mode);
+				modesPicker.value = data.mode;
+			}
+		}, onLoadFail)
+		.catch(onLoadFail)
+
+	editor.onDidChangeModelContent(onUpdateDebounced);
+
+	// Press F1 => the action will appear
+	editor.addAction({
+		id: 'format-html-css-js',
+		label: 'Format HTML CSS JS',
+		run: function (ed) {
+			const editorValue = editor.getModel().getValue();
+			const beautifyOptions ={
+				'indent-with-tabs': true,
+				'wrap-attributes': 'force-aligned',
+			};
+
+			switch (modesPicker.value) {
+				case 'html':
+					beautifyHTML(editorValue.trim()).then(r=>{
+						editor.getModel().setValue(r);
+					})
+					break;
+				case 'javascript':
+					editor.getModel().setValue(beautifyJS(editorValue.trim(), beautifyOptions));
+					break;
+				case 'css':
+					editor.getModel().setValue(beautifyCSS(editorValue.trim(), beautifyOptions));
+					break;
+			}
+		}
+	});
+
+	modesPicker.onchange = function (e) {
+		monaco.editor.setModelLanguage(editor.getModel(), this.value);
+		onUpdateDebounced();
+	}
+
+	var fileInputWrapper = document.createElement('div');
+
+	fileInputWrapper.hidden = true;
+	document.body.appendChild(fileInputWrapper);
+
+	var textFileInput = new TextFileInput(fileInputWrapper, {
+		onFiles: function (files) {
+			onFiles(files, editor);
+		}
+	});
+
+	function onFiles (files, target) {
+		var a = files[0];
+		var reader = new FileReader();
+
+		reader.onload = function() {
+			var language = findLanguageByFile(a);
+
+			if (language) {
+				monaco.editor.setModelLanguage(target.getModel(), language.id);
+				modesPicker.value = language.id;
+			}
+
+			target.getModel().setValue(reader.result);
+		};
+		reader.readAsText(a);
+	}
+
+	function findLanguageByFile (file) {
+		var result = '';
+		var languages = monaco.languages.getLanguages();
+		var extension = '.'+ file.name.split('.').pop();
+
+		for (var i = 0; i < languages.length; i++) {
+			if (
+				languages[i].extensions?.indexOf(extension) > -1
+			) {
+				return languages[i];
+			}
+		}
+
+		return result;
+	}
+
+	function onUpdate () {
+		const editorValue = editor.getModel().getValue();
+
+		save({
+			type: 'pasta',
+			texts: [
+				editorValue,
+			],
+			mode: modesPicker.value,
+		});
+	}
+
+	function onLoadFail (e) {
+		location.hash = '';
+	}
+
+	function setModesOptions () {
+		var MODES = (function() {
+			var modesIds = monaco.languages.getLanguages().map(function(lang) {
+				return lang.id;
+			});
+
+			modesIds.sort();
+
+			return modesIds.map(function(modeId) {
+				return {
+					modeId: modeId,
+				};
+			});
+		})();
+
+		for (var i = 0; i < MODES.length; i++) {
+			var o = document.createElement('option');
+
+			o.textContent = MODES[i].modeId;
+			modesPicker.appendChild(o);
+		}
+	}
+}
+</script>
+</body>
+</html>
