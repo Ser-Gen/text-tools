@@ -60,6 +60,7 @@
 <script src="../lib/textFileInput.js"></script>
 <script src="../lib/fflate.js"></script>
 <script src="../lib/saveload.js"></script>
+<script src="../lib/pageTitle.js"></script>
 <script src="../lib/beautify/dist/main.js"></script>
 <script src="../editor/min/vs/loader.js"></script>
 <script>
@@ -152,6 +153,8 @@ function onEditor () {
 	source.onDidChangeContent(onUpdateDebounced);
 	result.onDidChangeContent(onUpdateDebounced);
 
+	updatePageTitle([result.getValue(), source.getValue()], 'diff');
+
 	// https://github.com/microsoft/monaco-editor/issues/385
 	applyFormatAction(diffEditor.getOriginalEditor());
 	applyFormatAction(diffEditor.getModifiedEditor());
@@ -243,6 +246,9 @@ function onEditor () {
 	function onUpdate () {
 		const sourceValue = source.getValue();
 		const resultValue = result.getValue();
+
+		// правая сторона важнее: к ней приводят текст
+		updatePageTitle([resultValue, sourceValue], 'diff');
 
 		save({
 			type: 'diff',

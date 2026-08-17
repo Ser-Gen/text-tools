@@ -52,6 +52,7 @@
 <script src="../lib/textFileInput.js"></script>
 <script src="../lib/fflate.js"></script>
 <script src="../lib/saveload.js"></script>
+<script src="../lib/pageTitle.js"></script>
 <script src="../lib/beautify/dist/main.js"></script>
 <script src="../editor/min/vs/loader.js"></script>
 <script>
@@ -97,6 +98,8 @@ function onEditor () {
 		.catch(onLoadFail)
 
 	editor.onDidChangeModelContent(onUpdateDebounced);
+
+	updatePageTitle(editor.getModel().getValue(), 'Pasta');
 
 	// Press F1 => the action will appear
 	editor.addAction({
@@ -176,6 +179,8 @@ function onEditor () {
 
 	function onUpdate () {
 		const editorValue = editor.getModel().getValue();
+
+		updatePageTitle(editorValue, 'Pasta');
 
 		save({
 			type: 'pasta',
