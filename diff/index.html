@@ -155,6 +155,9 @@ function onEditor () {
 
 	updatePageTitle([result.getValue(), source.getValue()], 'diff');
 
+	// чтобы можно было писать сразу после загрузки
+	diffEditor.getOriginalEditor().focus();
+
 	// https://github.com/microsoft/monaco-editor/issues/385
 	applyFormatAction(diffEditor.getOriginalEditor());
 	applyFormatAction(diffEditor.getModifiedEditor());

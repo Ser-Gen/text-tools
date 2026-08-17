@@ -177,6 +177,9 @@ function onEditor () {
 
 	updateDebounced();
 
+	// чтобы можно было писать сразу после загрузки
+	html.focus();
+
 	html.onKeyUp(updateDebounced);
 	css.onKeyUp(updateDebounced);
 	js.onKeyUp(updateDebounced);

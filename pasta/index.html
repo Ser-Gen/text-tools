@@ -101,6 +101,9 @@ function onEditor () {
 
 	updatePageTitle(editor.getModel().getValue(), 'Pasta');
 
+	// чтобы можно было писать сразу после загрузки
+	editor.focus();
+
 	// Press F1 => the action will appear
 	editor.addAction({
 		id: 'format-html-css-js',
