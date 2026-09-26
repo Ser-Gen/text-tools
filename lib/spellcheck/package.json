@@ -1,0 +1,15 @@
+{
+	"name": "text-tools-spellcheck",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"vendor": "node scripts/vendor.js",
+		"test": "node test/words.test.js && node test/blocks.test.js && node test/checker.test.js"
+	},
+	"devDependencies": {
+		"dictionary-en": "4.0.0",
+		"dictionary-ru": "3.0.0",
+		"hunspell-wasm": "0.3.0"
+	}
+}

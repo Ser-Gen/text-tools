@@ -1,0 +1,12 @@
+{
+  "name": "preview",
+  "private": true,
+  "description": "Превью markdown для пасты: marked из vendor/, DOMPurify и раскраска — из сборки Монако",
+  "scripts": {
+    "vendor": "node scripts/vendor.js",
+    "test": "node test/preview.test.js"
+  },
+  "devDependencies": {
+    "marked": "18.0.11"
+  }
+}

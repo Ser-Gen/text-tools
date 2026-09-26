@@ -7,16 +7,43 @@
 	<title>Pasta</title>
 	<style>
 		html,
-		body,
-		#container {
+		body {
 			height: 100%;
 			overflow: hidden;
 		}
 		body {
 			margin: 0;
 		}
-		#container {
+		#workspace {
+			display: flex;
 			height: calc(100% - 22px);
+		}
+		#container,
+		#previewPane {
+			flex: 1 1 0;
+			min-width: 0;
+			min-height: 0;
+			overflow: hidden;
+		}
+		#previewPane {
+			border-left: 1px solid #3c3c3c;
+			background-color: #1e1e1e;
+		}
+		#previewPane iframe {
+			display: block;
+			width: 100%;
+			height: 100%;
+			border: 0;
+		}
+		/* на узком экране половина ширины — это пара слов в строке */
+		@media (max-width: 700px) {
+			#workspace {
+				flex-direction: column;
+			}
+			#previewPane {
+				border-left: 0;
+				border-top: 1px solid #3c3c3c;
+			}
 		}
 		#panel {
 			background-color: rgb(0, 122, 204);
@@ -34,14 +61,22 @@
 		#panel #right {
 			float: right;
 		}
+		#panel .dimmed {
+			opacity: .6;
+		}
 	</style>
 	<link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>
 <body>
-	<div id="container"></div>
+	<div id="workspace">
+		<div id="container"></div>
+		<div id="previewPane" hidden></div>
+	</div>
 	<div id="panel">
 		<a href="../">&larr; В список</a>
 		<div id="right">
+			<button id="previewToggle" hidden>превью</button>
+			<button id="spellcheckToggle">орфо</button>
 			<select id="modesPicker">
 				<option value="plaintext" selected>plaintext</option>
 			</select>
@@ -53,6 +88,8 @@
 <script src="../lib/fflate.js"></script>
 <script src="../lib/saveload.js"></script>
 <script src="../lib/pageTitle.js"></script>
+<script src="../lib/spellcheck/spellcheck.js"></script>
+<script src="../lib/preview/preview.js"></script>
 <script src="../lib/beautify/dist/main.js"></script>
 <script src="../editor/min/vs/loader.js"></script>
 <script>
@@ -81,6 +118,40 @@ function onEditor () {
 			value: "Привет!",
 		}
 	);
+
+	// орфография: plaintext и markdown, вся работа в воркере. Включена ли —
+	// личная настройка, поэтому в localStorage, а не в адресной строке
+	var SPELLCHECK_KEY = 'pastaSpellcheck';
+	var spellcheck = attachSpellcheck(editor, {
+		workerUrl: '../lib/spellcheck/worker.js',
+		enabled: recallFlag(SPELLCHECK_KEY, true),
+		onStatus: renderSpellcheckStatus,
+	});
+
+	spellcheckToggle.onclick = function () {
+		var value = !spellcheck.isEnabled();
+
+		rememberFlag(SPELLCHECK_KEY, value);
+		spellcheck.setEnabled(value);
+	};
+
+	// превью markdown рядом с редактором. Тоже личная настройка: ссылкой
+	// делятся текстом, а не тем, как его смотреть
+	var PREVIEW_KEY = 'pastaPreview';
+	var preview = attachMarkdownPreview(editor, {
+		container: previewPane,
+		// грузится, только когда превью включат
+		markedUrl: '../lib/preview/vendor/marked.umd.js',
+		enabled: recallFlag(PREVIEW_KEY, false),
+		onStatus: renderPreviewStatus,
+	});
+
+	previewToggle.onclick = function () {
+		var value = !preview.isEnabled();
+
+		rememberFlag(PREVIEW_KEY, value);
+		preview.setEnabled(value);
+	};
 
 	const onUpdateDebounced = debounce(onUpdate);
 
@@ -146,6 +217,63 @@ function onEditor () {
 			onFiles(files, editor);
 		}
 	});
+
+	// личные выключатели: в localStorage, не в адресной строке
+	function recallFlag (key, fallback) {
+		try {
+			var value = localStorage.getItem(key);
+
+			return value === null ? fallback : value === '1';
+		}
+		catch (e) {
+			return fallback;
+		}
+	}
+
+	function rememberFlag (key, value) {
+		try {
+			localStorage.setItem(key, value ? '1' : '0');
+		}
+		catch (e) {
+			// приватный режим — настройка просто не переживёт перезагрузку
+		}
+	}
+
+	// вызывается уже из attachSpellcheck, поэтому всё нужное — внутри функции
+	function renderSpellcheckStatus (status) {
+		var text = {
+			off: 'орфо: выкл',
+			notProse: 'орфо',
+			loading: 'орфо: …',
+			error: 'орфо: —',
+			count: 'орфо: '+ status.count,
+		};
+		var title = {
+			off: 'Проверка орфографии выключена',
+			notProse: 'Орфография проверяется в plaintext и markdown',
+			loading: 'Загружаются словари',
+			error: 'Проверка орфографии не работает: '+ status.message,
+			count: 'Слов не из словаря: '+ status.count +'. F8 — к следующему',
+		};
+
+		spellcheckToggle.textContent = text[status.state];
+		spellcheckToggle.title = title[status.state];
+		spellcheckToggle.className = status.state === 'off' || status.state === 'notProse' ? 'dimmed' : '';
+	}
+
+	// кнопка видна только в markdown: в других режимах показывать нечего
+	function renderPreviewStatus (status) {
+		var title = {
+			off: 'Показать превью markdown рядом с текстом',
+			on: 'Спрятать превью',
+			error: 'Превью не работает: '+ status.message,
+		};
+
+		previewToggle.hidden = status.state === 'notMarkdown';
+		previewToggle.textContent = status.state === 'error' ? 'превью: —' : 'превью';
+		previewToggle.title = title[status.state] || '';
+		previewToggle.className = status.state === 'on' ? '' : 'dimmed';
+	}
 
 	function onFiles (files, target) {
 		var a = files[0];
